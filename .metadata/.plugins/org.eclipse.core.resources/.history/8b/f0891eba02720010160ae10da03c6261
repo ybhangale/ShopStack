@@ -1,0 +1,77 @@
+package com.shopstack.service;
+
+import com.shopstack.models.*;
+import com.shopstack.repositories.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class CartServiceImpl implements CartService {
+
+    @Autowired
+    private CartItemRepository cartItemRepo;
+
+    @Autowired
+    private ProductRepository productRepo;
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Override
+    public CartItem addToCart(Long productId, int quantity, String username) {
+        User user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Product product = productRepo.findById(productId)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        // Check if the cart item already exists for this user and product
+        Optional<CartItem> existingItem = cartItemRepo.findByUserAndProduct(user, product);
+
+        if (existingItem.isPresent()) {
+            CartItem item = existingItem.get();
+            item.setQuantity(item.getQuantity() + quantity);
+            return cartItemRepo.save(item);
+        } else {
+            CartItem newItem = new CartItem();
+            newItem.setUser(user);
+            newItem.setProduct(product);
+            newItem.setQuantity(quantity);
+            return cartItemRepo.save(newItem);
+        }
+    }
+
+    @Override
+    public List<CartItem> getUserCart(String username) {
+        User user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return cartItemRepo.findByUser(user);
+    }
+
+    @Override
+    public void removeFromCart(Long cartItemId, String username) {
+        CartItem item = cartItemRepo.findById(cartItemId)
+                .orElseThrow(() -> new RuntimeException("Cart item not found"));
+
+        if (!item.getUser().getUsername().equals(username)) {
+            throw new RuntimeException("Unauthorized deletion attempt");
+        }
+
+        cartItemRepo.delete(item);
+    }
+
+    @Override
+    public void clearCart(String username) {
+        User user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        cartItemRepo.deleteByUser(user);
+    }
+
+	@Override
+	public CartItem updateCartItem(Long cartItemId, int quantity, String username) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+}

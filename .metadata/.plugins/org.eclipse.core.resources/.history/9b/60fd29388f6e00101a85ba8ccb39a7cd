@@ -1,0 +1,36 @@
+package com.shopstack.service;
+
+import com.shopstack.dto.LoginDto;
+import com.shopstack.dto.RegisterDto;
+import com.shopstack.models.User;
+import com.shopstack.models.User.Role;
+import com.shopstack.repositories.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.Collections;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public String register(RegisterDto dto) {
+        if (userRepository.existsByUsername(dto.getUsername())) {
+            return "Username already exists!";
+        }
+
+        User user = User.builder()
+                .username(dto.getUsername())
+                .email(dto.getEmail())
+                .password(passwordEncoder.encode(dto.getPassword()))
+                .roles(Collections.singleton(Role.ROLE_USER))
+                .build();
+
+        userRepository.save(user);
+        return "User registered successfully!";
+    }
+}

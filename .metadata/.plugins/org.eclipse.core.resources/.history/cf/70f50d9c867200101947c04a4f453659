@@ -1,0 +1,80 @@
+package com.shopstack.service;
+
+import com.shopstack.dto.LoginDto;
+import com.shopstack.dto.RegisterDto;
+import com.shopstack.models.User;
+import com.shopstack.models.Role;
+import com.shopstack.repositories.UserRepository;
+import com.shopstack.security.JwtProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.*;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
+
+
+import java.util.Collections;
+
+@Service
+public class AuthServiceImpl implements AuthService {
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
+
+    @Autowired
+    private JwtProvider jwtProvider;
+
+    @Override
+    public ResponseEntity<?> register(RegisterDto registerDto) {
+        if (userRepo.existsByUsername(registerDto.getUsername())) {
+            return ResponseEntity.badRequest().body("Username already taken!");
+        }
+
+        User user = new User();
+        user.setUsername(registerDto.getUsername());
+        user.setEmail(registerDto.getEmail());
+        user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
+
+        Role assignedRole = Role.ROLE_USER;
+        if (registerDto.getRole() != null) {
+            try {
+                assignedRole = Role.valueOf("ROLE_" + registerDto.getRole().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("Invalid role provided!");
+            }
+        }
+
+        user.setRoles(Collections.singleton(assignedRole));
+        userRepo.save(user);
+
+        return ResponseEntity.ok("User registered successfully with role: " + assignedRole);
+    }
+
+    @Override
+    public ResponseEntity<?> login(LoginDto loginDto) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        loginDto.getUsername(),
+                        loginDto.getPassword()
+                )
+            );
+
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String token = jwtProvider.generateToken(userDetails);
+
+            return ResponseEntity.ok("Bearer " + token);
+
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.status(401).body("Invalid username or password");
+        }
+    }
+}

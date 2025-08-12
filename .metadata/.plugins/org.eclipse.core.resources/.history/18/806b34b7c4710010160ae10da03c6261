@@ -1,0 +1,27 @@
+package com.shopstack.controller;
+
+import com.shopstack.dto.LoginDto;
+import com.shopstack.dto.RegisterDto;
+import com.shopstack.models.User;
+import com.shopstack.service.AuthService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+    @Autowired
+    private AuthService authService;
+
+    @PostMapping("/register")
+    public ResponseEntity<?> registerUser(@RequestBody RegisterDto registerDto) {
+        return authService.register(registerDto);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> loginUser(@RequestBody LoginDto loginDto) {
+        return authService.login(loginDto);
+    }
+}

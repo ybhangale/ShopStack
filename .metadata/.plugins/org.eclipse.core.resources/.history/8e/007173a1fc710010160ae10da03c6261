@@ -1,0 +1,5 @@
+package com.shopstack.service;
+
+public interface ProductService {
+
+}

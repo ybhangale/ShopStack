@@ -1,0 +1,81 @@
+package com.shopstack;
+
+import com.shopstack.models.Product;
+import com.shopstack.models.Role;
+import com.shopstack.models.User;
+import com.shopstack.repositories.ProductRepository;
+import com.shopstack.repositories.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+@RequiredArgsConstructor
+public class DataInitializer implements CommandLineRunner {
+
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public void run(String... args) {
+
+        // ✅ Insert initial products if DB is empty
+        if (productRepository.count() == 0) {
+            List<Product> products = List.of(
+                Product.builder()
+                        .name("Running Shoes")
+                        .description("High-quality sports shoes")
+                        .price(2500.0)
+                        .quantity(15)
+                        .imageUrl("https://example.com/shoes.jpg")
+                        .build(),
+                Product.builder()
+                        .name("Bluetooth Speaker")
+                        .description("Portable speaker with deep bass")
+                        .price(1799.0)
+                        .quantity(20)
+                        .imageUrl("https://example.com/speaker.jpg")
+                        .build(),
+                Product.builder()
+                        .name("Smart Watch")
+                        .description("Fitness tracker with heart rate monitor")
+                        .price(3499.0)
+                        .quantity(25)
+                        .imageUrl("https://example.com/watch.jpg")
+                        .build()
+            );
+            productRepository.saveAll(products);
+            System.out.println("✅ Sample products inserted.");
+        }
+
+        // ✅ Create Admin user if not exists
+        if (!userRepository.existsByEmail("admin@shop.com")) {
+            User admin = User.builder()
+                    .name("Admin")
+                    .email("admin@shop.com")
+                    .password(passwordEncoder.encode("admin123"))
+                    .role(Role.ADMIN)
+                    .build();
+            userRepository.save(admin);
+            System.out.println("✅ Admin user created.");
+        }
+
+        // ✅ Create Normal user if not exists
+        if (!userRepository.existsByEmail("user@shop.com")) {
+            User user = User.builder()
+                    .name("Normal User")
+                    .email("user@shop.com")
+                    .password(passwordEncoder.encode("user123"))
+                    .role(Role.ROLE.USER)
+                    .build();
+            userRepository.save(user);
+            System.out.println("✅ Normal user created.");
+        }
+
+        System.out.println("✅ Initial data setup complete.");
+    }
+}

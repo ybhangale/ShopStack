@@ -1,0 +1,67 @@
+package com.shopstack.service;
+
+import com.shopstack.dto.CartItemDto;
+import com.shopstack.models.CartItem;
+import com.shopstack.models.Product;
+import com.shopstack.models.User;
+import com.shopstack.repositories.CartItemRepository;
+import com.shopstack.repositories.ProductRepository;
+import com.shopstack.repositories.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class CartServiceImpl implements CartService {
+
+    private final CartItemRepository cartItemRepo;
+    private final UserRepository userRepo;
+    private final ProductRepository productRepo;
+
+    @Override
+    public CartItem addToCart(CartItemDto cartItemDto, String username) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        Product product = productRepo.findById(cartItemDto.getProductId()).orElseThrow();
+
+        CartItem cartItem = new CartItem();
+        cartItem.setUser(user);
+        cartItem.setProduct(product);
+        cartItem.setQuantity(cartItemDto.getQuantity());
+
+        return cartItemRepo.save(cartItem);
+    }
+
+    @Override
+    public List<CartItem> getCartItems(String username) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        return cartItemRepo.findByUser(user);
+    }
+
+    @Override
+    public void removeCartItem(Long itemId, String username) {
+        CartItem item = cartItemRepo.findById(itemId).orElseThrow();
+        if (!item.getUser().getUsername().equals(username)) {
+            throw new RuntimeException("Unauthorized deletion attempt.");
+        }
+        cartItemRepo.deleteById(itemId);
+    }
+
+    @Override
+    public void clearCart(String username) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        List<CartItem> items = cartItemRepo.findByUser(user);
+        cartItemRepo.deleteAll(items);
+    }
+
+    @Override
+    public CartItem updateCartItem(Long cartItemId, int quantity, String username) {
+        CartItem item = cartItemRepo.findById(cartItemId).orElseThrow(() -> new RuntimeException("Cart item not found"));
+        if (!item.getUser().getUsername().equals(username)) {
+            throw new RuntimeException("You are not authorized to update this cart item");
+        }
+        item.setQuantity(quantity);
+        return cartItemRepo.save(item);
+    }
+}

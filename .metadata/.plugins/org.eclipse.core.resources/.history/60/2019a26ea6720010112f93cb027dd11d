@@ -1,0 +1,73 @@
+package com.shopstack;
+
+import com.shopstack.models.Product;
+import com.shopstack.models.Role;
+import com.shopstack.repositories.RoleRepository;
+import com.shopstack.models.User;
+import com.shopstack.repositories.ProductRepository;
+import com.shopstack.repositories.UserRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Component
+public class DataInitializer implements CommandLineRunner {
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Override
+    public void run(String... args) throws Exception {
+        // Initialize sample products
+        if (productRepository.count() == 0) {
+            Product p1 = new Product("Apple iPhone 13", "Latest iPhone model", 79999.99, "https://example.com/iphone.jpg");
+            Product p2 = new Product("Samsung Galaxy S21", "High-end Android phone", 69999.99, "https://example.com/s21.jpg");
+            Product p3 = new Product("Sony WH-1000XM4", "Noise-cancelling headphones", 24999.99, "https://example.com/sony.jpg");
+
+            productRepository.save(p1);
+            productRepository.save(p2);
+            productRepository.save(p3);
+        }
+
+        // Initialize default admin and user accounts
+        if (userRepository.count() == 0) {
+            // Ensure roles exist in DB
+            Role adminRole = roleRepository.findByName("ADMIN")
+                .orElseGet(() -> roleRepository.save(Role.builder().name("ADMIN").build()));
+            Role userRole = roleRepository.findByName("USER")
+                .orElseGet(() -> roleRepository.save(Role.builder().name("USER").build()));
+
+            User admin = new User();
+            admin.setUsername("admin");
+            admin.setEmail("admin@shop.com");
+            admin.setPassword(passwordEncoder.encode("admin123"));
+            Set<Role> adminRoles = new HashSet<>();
+            adminRoles.add(adminRole);
+            admin.setRoles(adminRoles);
+
+            User user = new User();
+            user.setUsername("user");
+            user.setEmail("user@shop.com");
+            user.setPassword(passwordEncoder.encode("user123"));
+            Set<Role> userRoles = new HashSet<>();
+            userRoles.add(userRole);
+            user.setRoles(userRoles);
+
+            userRepository.save(admin);
+            userRepository.save(user);
+        }
+    }
+}

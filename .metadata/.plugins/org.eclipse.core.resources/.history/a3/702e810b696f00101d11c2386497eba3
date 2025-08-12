@@ -1,0 +1,58 @@
+package com.shopstack;
+
+import com.shopstack.models.Product;
+import com.shopstack.models.Role;
+import com.shopstack.models.User;
+import com.shopstack.repositories.ProductRepository;
+import com.shopstack.repositories.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+@RequiredArgsConstructor
+public class DataInitializer implements CommandLineRunner {
+
+    private final ProductRepository productRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public void run(String... args) throws Exception {
+
+        // 🌟 Initialize dummy products
+        if (productRepository.count() == 0) {
+            List<Product> products = List.of(
+                    new Product(null, "iPhone 15", "Latest iPhone model", 1299.99, "https://example.com/iphone15.jpg"),
+                    new Product(null, "Samsung Galaxy S23", "Flagship Android phone", 1099.99, "https://example.com/galaxy.jpg"),
+                    new Product(null, "MacBook Pro", "Apple laptop", 1999.99, "https://example.com/macbook.jpg")
+            );
+            productRepository.saveAll(products);
+        }
+
+        // 🌟 Create an ADMIN user if not exists
+        if (!userRepository.existsByEmail("admin@shop.com")) {
+            User admin = new User();
+            admin.setName("Admin");
+            admin.setEmail("admin@shop.com");
+            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setRole(Role.ADMIN); // using Enum
+            userRepository.save(admin);
+        }
+
+        // 🌟 Create a USER if not exists
+        if (!userRepository.existsByEmail("user@shop.com")) {
+            User user = new User();
+            user.setName("Normal User");
+            user.setEmail("user@shop.com");
+            user.setPassword(passwordEncoder.encode("user123"));
+            user.setRole(Role.USER); // using Enum
+            userRepository.save(user);
+        }
+
+        System.out.println("✅ Initial data inserted successfully.");
+    }
+}

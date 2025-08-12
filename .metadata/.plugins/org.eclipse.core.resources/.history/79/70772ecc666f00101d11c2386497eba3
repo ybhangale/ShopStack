@@ -1,0 +1,51 @@
+package com.shopstack.service;
+
+import com.shopstack.models.*;
+import com.shopstack.repositories.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class CartServiceImpl implements CartService {
+
+    @Autowired
+    private CartItemRepository cartItemRepo;
+
+    @Autowired
+    private ProductRepository productRepo;
+
+    @Autowired
+    private UserRepository userRepo;
+
+    @Override
+    public CartItem addToCart(Long productId, int quantity, String username) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        Product product = productRepo.findById(productId).orElseThrow();
+
+        CartItem item = new CartItem();
+        item.setProduct(product);
+        item.setQuantity(quantity);
+        item.setUser(user);
+        return cartItemRepo.save(item);
+    }
+
+    @Override
+    public List<CartItem> getUserCart(String username) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        return cartItemRepo.findByUser(user);
+    }
+
+    @Override
+    public void removeFromCart(Long cartItemId, String username) {
+        cartItemRepo.deleteById(cartItemId);
+    }
+
+    @Override
+    public void clearCart(String username) {
+        User user = userRepo.findByUsername(username).orElseThrow();
+        cartItemRepo.deleteByUser(user);
+    }
+}
+s

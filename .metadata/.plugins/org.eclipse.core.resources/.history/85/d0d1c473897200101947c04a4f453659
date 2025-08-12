@@ -1,0 +1,107 @@
+package com.shopstack.security;
+
+import com.shopstack.service.CustomUserDetailsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+@EnableWebSecurity // Enables Spring Security's web security support
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    // Your custom filter for processing JWTs on each request.
+    private final JwtAuthFilter jwtAuthFilter;
+    // Your custom service for loading user-specific data.
+    private final CustomUserDetailsService userDetailsService;
+
+    // A whitelist for Swagger UI endpoints. These will be publicly accessible.
+    private static final String[] SWAGGER_WHITELIST = {
+            "/v3/api-docs/**",
+            "/swagger-ui/**", // Covers all assets under /swagger-ui/
+            "/swagger-ui.html", // The main page
+            "/swagger-ui/index.html" // A common alternative main page
+    };
+
+    // A whitelist for your public API endpoints.
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/api/auth/**",        // Allows access to registration and login.
+            "/api/products/**"     // Allows public viewing of products.
+    };
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            // Disable CSRF protection, as it's not needed for stateless REST APIs using JWTs.
+            .csrf(csrf -> csrf.disable())
+            // Configure CORS. We define a more specific configuration below in the corsConfigurer bean.
+            .cors(cors -> {})
+            // Set the session management policy to STATELESS. This is crucial for JWT-based security.
+            // The server will not create or use any HTTP session.
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // Define authorization rules for different endpoints.
+            .authorizeHttpRequests(auth -> auth
+                // Permit all requests to the Swagger UI endpoints.
+                .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                // Permit all requests to the public API endpoints.
+                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                // Secure the cart endpoints. Only users with the 'USER' role can access them.
+                // Note: .hasRole("USER") automatically checks for an authority of "ROLE_USER".
+                .requestMatchers("/api/cart/**").hasRole("USER")
+                // Any other request that is not explicitly permitted must be authenticated.
+                .anyRequest().authenticated()
+            )
+            // Add your custom JwtAuthFilter before the standard UsernamePasswordAuthenticationFilter.
+            // This ensures your JWT validation logic is executed first.
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    /**
+     * Exposes the AuthenticationManager from AuthenticationConfiguration as a Bean.
+     * This is the standard way to do it in Spring Security 6+.
+     * The AuthenticationManager is needed by your AuthService to process login requests.
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    /**
+     * Provides a PasswordEncoder bean for the application.
+     * BCrypt is a strong, industry-standard hashing algorithm for passwords.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * Optional: Provides a global CORS (Cross-Origin Resource Sharing) configuration.
+     * This is useful if your frontend is served from a different origin (domain/port) than your backend.
+     */
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**") // Apply CORS to all endpoints
+                        .allowedOrigins("*") // For development, allow all origins. In production, restrict this to your frontend's URL.
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // Allowed HTTP methods
+                        .allowedHeaders("*"); // Allowed headers
+            }
+        };
+    }
+}

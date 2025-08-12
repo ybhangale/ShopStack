@@ -1,0 +1,70 @@
+package com.shopstack.controller;
+
+import com.shopstack.models.Product;
+import com.shopstack.repositories.ProductRepository;
+
+import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/admin/products")
+@CrossOrigin(origins = "http://localhost:5173") // adjust frontend port if needed
+public class ProductController {
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    // GET all products (accessible to ADMIN)
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping
+    public ResponseEntity<List<Product>> getAllProducts() {
+        return ResponseEntity.ok(productRepository.findAll());
+    }
+
+    // POST: add product (ADMIN only)
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/add")
+    public ResponseEntity<Product> createProduct(@Valid @RequestBody Product product) {
+        return ResponseEntity.ok(productRepository.save(product));
+    }
+
+    // GET: get product by ID (ADMIN only)
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{id}")
+    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+        Optional<Product> optionalProduct = productRepository.findById(id);
+        return optionalProduct.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // PUT: update product (ADMIN only)
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @Valid @RequestBody Product updatedProduct) {
+        return productRepository.findById(id).map(product -> {
+            product.setName(updatedProduct.getName());
+            product.setDescription(updatedProduct.getDescription());
+            product.setPrice(updatedProduct.getPrice());
+            product.setImageUrl(updatedProduct.getImageUrl());
+            product.setCategory(updatedProduct.getCategory());
+            product.setStock(updatedProduct.getStock());
+            return ResponseEntity.ok(productRepository.save(product));
+        }).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // DELETE: delete product (ADMIN only)
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+        return productRepository.findById(id).map(product -> {
+            productRepository.delete(product);
+            return ResponseEntity.ok().build();
+        }).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+}

@@ -1,0 +1,85 @@
+    @GetMapping
+    public ResponseEntity<List<Order>> getOrdersForUser(@AuthenticationPrincipal User user) {
+        List<Order> orders = orderRepository.findByUser(user);
+        return ResponseEntity.ok(orders);
+    }
+package com.shopstack.controller;
+
+import com.shopstack.models.Order;
+import com.shopstack.models.OrderStatusHistory;
+import com.shopstack.models.Product;
+import com.shopstack.service.OrderStatusHistoryService;
+import com.shopstack.repositories.OrderRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.shopstack.repositories.ProductRepository;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+import org.springframework.security.core.Authentication;
+
+@RestController
+@RequestMapping("/api/orders")
+public class OrderController {
+    @PostMapping
+    public ResponseEntity<Order> placeOrder(@RequestBody Order order, @AuthenticationPrincipal User user) {
+        // Set the user for the order
+        order.setUser(user);
+        order.setStatus("PLACED");
+        // Decrement product stock
+        if (order.getProduct() != null) {
+            Product product = order.getProduct();
+            int newQty = product.getQuantity() - order.getQuantity();
+            if (newQty < 0) newQty = 0;
+            product.setQuantity(newQty);
+            product.setLowStockAlert(newQty <= 5);
+            productRepository.save(product);
+        }
+        Order savedOrder = orderRepository.save(order);
+        orderStatusHistoryService.addStatusHistory(savedOrder, "PLACED");
+        // Optionally send notification
+        if (user != null && user.getEmail() != null) {
+            notificationService.sendOrderUpdate(user.getEmail(), "Your order has been placed.");
+        }
+        return ResponseEntity.ok(savedOrder);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Order>> getOrdersForUser(Authentication authentication) {
+        String username = authentication.getName();
+        com.shopstack.models.User user = userRepository.findByUsername(username).orElseThrow();
+        List<Order> orders = orderRepository.findByUser(user);
+        return ResponseEntity.ok(orders);
+    }
+    @Autowired
+    private com.shopstack.service.NotificationService notificationService;
+    @Autowired
+    private OrderRepository orderRepository;
+    @Autowired
+    private OrderStatusHistoryService orderStatusHistoryService;
+    @Autowired
+    private ProductRepository productRepository;
+    @Autowired
+    private com.shopstack.repositories.UserRepository userRepository;
+
+    @PutMapping("/{orderId}/status")
+    public ResponseEntity<Order> updateOrderStatus(@PathVariable Long orderId, @RequestParam String status) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+        order.setStatus(status);
+        orderStatusHistoryService.addStatusHistory(order, status);
+        orderRepository.save(order);
+        // Send notification to user (stub: use email)
+        if (order.getUser() != null && order.getUser().getEmail() != null) {
+            notificationService.sendOrderUpdate(order.getUser().getEmail(), "Your order status is now: " + status);
+        }
+        return ResponseEntity.ok(order);
+    }
+
+    @GetMapping("/{orderId}/status-history")
+    public ResponseEntity<List<OrderStatusHistory>> getOrderStatusHistory(@PathVariable Long orderId) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new RuntimeException("Order not found"));
+        return ResponseEntity.ok(orderStatusHistoryService.getStatusHistoryByOrder(order));
+    }
+}

@@ -1,0 +1,14 @@
+package com.shopstack.service;
+
+import com.shopstack.dto.CartItemDto;
+import com.shopstack.models.CartItem;
+
+import java.util.List;
+
+public interface CartService {
+    CartItem addToCart(CartItemDto cartItemDto, String username);
+    List<CartItem> getCartItems(String username);
+    void removeCartItem(Long itemId, String username);
+    void clearCart(String username);
+    CartItem updateCartItem(Long cartItemId, int quantity, String username);
+}

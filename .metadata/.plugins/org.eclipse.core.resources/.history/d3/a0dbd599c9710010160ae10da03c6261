@@ -1,0 +1,31 @@
+package com.shopstack.controller;
+import com.shopstack.models.Product;
+import com.shopstack.repositories.ProductRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/admin/products")
+@CrossOrigin(origins = "http://localhost:5173") // adjust frontend port if needed
+public class ProductController {
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    // GET all products
+    @GetMapping
+    public ResponseEntity<List<Product>> getAllProducts() {
+        return ResponseEntity.ok(productRepository.findAll());
+    }
+
+    // POST: add product (for Admin)
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping
+    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+        return ResponseEntity.ok(productRepository.save(product));
+    }
+}

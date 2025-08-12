@@ -1,0 +1,56 @@
+package com.shopstack.controller;
+
+import com.shopstack.dto.CartItemDto;
+import com.shopstack.model.CartItem;
+import com.shopstack.service.CartService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/cart")
+@RequiredArgsConstructor
+public class CartController {
+
+    private final CartService cartService;
+
+    @PostMapping("/add")
+    public ResponseEntity<CartItem> addToCart(@RequestBody CartItemDto cartItemDto, Authentication authentication) {
+        String username = authentication.getName();
+        CartItem addedItem = cartService.addToCart(cartItemDto, username);
+        return ResponseEntity.ok(addedItem);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<CartItem>> getCartItems(Authentication authentication) {
+        String username = authentication.getName();
+        List<CartItem> cartItems = cartService.getCartItems(username);
+        return ResponseEntity.ok(cartItems);
+    }
+
+    @DeleteMapping("/remove/{itemId}")
+    public ResponseEntity<Void> removeCartItem(@PathVariable Long itemId, Authentication authentication) {
+        String username = authentication.getName();
+        cartService.removeCartItem(itemId, username);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/clear")
+    public ResponseEntity<Void> clearCart(Authentication authentication) {
+        String username = authentication.getName();
+        cartService.clearCart(username);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/update/{cartItemId}")
+    public ResponseEntity<CartItem> updateCartItem(@PathVariable Long cartItemId,
+                                                   @RequestBody CartItemDto cartItemDto,
+                                                   Authentication authentication) {
+        String username = authentication.getName();
+        CartItem updatedItem = cartService.updateCartItem(cartItemId, cartItemDto.getQuantity(), username);
+        return ResponseEntity.ok(updatedItem);
+    }
+}
